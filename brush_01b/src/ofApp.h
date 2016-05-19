@@ -1,9 +1,9 @@
 #pragma once
 #include "ofMain.h"
-#include "ofxExportImageSequence.h"
 
 #ifndef TARGET_OPENGLES
 //#define RENDER
+#include "ofxExportImageSequence.h"
 #endif
 
 class ofApp : public ofBaseApp{
@@ -26,6 +26,7 @@ public:
     void exit(ofEventArgs & args) override;
     void audioIn(float * input, int bufferSize, int nChannels) override;
     
+    void draw_wave();
     void draw_bg();
     void draw_info();
     
@@ -43,12 +44,7 @@ public:
     
     ofVec2f start_point; // absolute pix pos
     ofVec2f indicator;   // relative pix pos(dist from start_point)
-    
-    ofVboMesh vPoints;
-    ofVboMesh vLines;
-    ofVboMesh vAudio;
-    ofVboMesh vCam;
-    
+        
     // sound
     int currentSamplePos;
     int prevSamplePos;

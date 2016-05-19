@@ -42,18 +42,6 @@ void ofApp::setup(){
     float speed_ms = track_len / (float)total_time_ms;
     indicator_speed = speed_ms * 1000.0f/(float)targetFps;
     
-    // vbo
-    vPoints.setUsage(GL_DYNAMIC_DRAW);
-    vPoints.setMode(OF_PRIMITIVE_POINTS);
-
-    vLines.setMode(OF_PRIMITIVE_LINES);
-    vLines.setUsage(GL_DYNAMIC_DRAW);
-    
-    vAudio.setUsage(GL_DYNAMIC_DRAW);
-    vAudio.setMode(OF_PRIMITIVE_POINTS);
-    
-    vCam.setUsage(GL_DYNAMIC_DRAW);
-    vCam.setMode(OF_PRIMITIVE_TRIANGLES);
     
 #ifdef RENDER
     exp.setup(1920, 1080, 30);
@@ -85,11 +73,6 @@ void ofApp::update(){
     int totalSampleNum = total_time_ms/1000 * sampleRate;
     indicator.x = (float)currentSamplePos/totalSampleNum * track_len;
     
-    // vbo clear
-    vPoints.clearVertices();
-    vPoints.clearColors();
-    vLines.clearVertices();
-    vLines.clearColors();
     
     // make vbo from video
 //    grabber.update();
@@ -105,61 +88,6 @@ void ofApp::update(){
 //            }
 //        }
 //    }
-        
-    // make vbo from audio
-    if(audioData.size()!=0){
-        
-        ob::settings s;
-        s.app = this;
-        s.indicator = indicator;
-        s.data = &audioData;
-        s.vp = &vPoints;
-        s.vl = &vLines;
-        s.track_len = track_len;
-        s.bufferSize = soundStream.getBufferSize();
-        s.xrate = track_len/s.bufferSize;
-
-        int start = 0;
-        const int end = s.bufferSize;
-        float amp = canvas.height/2 * 0.8;
-        bool loop = true;
-
-        while( loop ){
-        
-            float n1 = ofNoise( ofGetDay(), ofGetElapsedTimef(), start );
-            int type_max = 7;
-            int type = round(n1 * type_max);
-
-            float n2 = ofNoise( ofGetHours() , ofGetFrameNum()*2.0, start );
-            n2 = pow(n2, 8) * ofRandom(1.0f,10.0f);
-            
-            int num_min = s.bufferSize * 0.01;
-            int num_max = s.bufferSize * 0.05;
-            int num = num_min + n2*num_max;
-            
-            if(type == 3) num*=0.25;
-            
-            if((start+num)>=end){
-                num =  end-start-1;
-                loop = false;
-            }
-            switch (type) {
-                case 0: ob::draw_line_wave(s, start, num, amp); break;
-                case 1: ob::draw_dot_wave(s, start, num, amp); break;
-                case 2: ob::draw_prep_line(s, start, num, amp); break;
-                case 3: ob::draw_circle(s, start, num, amp); break;
-                case 4: ob::draw_rect(s, start, num, amp); break;
-                case 5: ob::draw_log_wave(s, start, num, amp*0.01); break;
-                case 6: ob::draw_arc(s, start, num, amp*0.5); break;
-                case 7: ob::draw_prep_line_inv(s, start, num, amp/3); break;
-                
-                default: break;
-            }
-            
-            start += num;
-        }
-    }
-
     
     if (indicator.x >= track_len) {
         cout << "tracking finished : " << ofGetElapsedTimef() << endl;
@@ -188,24 +116,77 @@ void ofApp::draw(){
 
         draw_bg();
         
-        vPoints.draw();
-        vLines.draw();
-        vAudio.draw();
+        draw_wave();
         
     }ofPopMatrix();
         
     int y = 10;
     int os = 15;
     ofSetColor(0);
-    ofDrawBitmapString("fps  " + ofToString(ofGetFrameRate()), 10, y);
-    ofDrawBitmapString("vPoints numVertices " + ofToString(vPoints.getNumVertices()), 10, y+=os);
-    ofDrawBitmapString("vLines  numVertices " + ofToString(vLines.getNumVertices()), 10, y+=os);
+    ofDrawBitmapString("fps        " + ofToString(ofGetFrameRate()), 10, y);
+    ofDrawBitmapString("nChannels  " + ofToString(soundStream.getNumInputChannels() ), 10, y+=os);
+    ofDrawBitmapString("bufferSize " + ofToString(soundStream.getBufferSize()), 10, y+=os);
+    ofDrawBitmapString("sampleRate " + ofToString(soundStream.getSampleRate()), 10, y+=os);
 
 #ifdef RENDER
     exp.end();
     exp.draw(0, 0);
 #endif
         
+}
+
+void ofApp::draw_wave(){
+    // make vbo from audio
+    if(audioData.size()!=0){
+        
+        ob::settings s;
+        s.app = this;
+        s.indicator = indicator;
+        s.data = &audioData;
+        s.track_len = track_len;
+        s.bufferSize = soundStream.getBufferSize();
+        s.xrate = track_len/s.bufferSize;
+        
+        int start = 0;
+        const int end = s.bufferSize;
+        float amp = canvas.height/2 * 0.8;
+        bool loop = true;
+        
+        while( loop ){
+            
+            float n1 = ofNoise( ofGetDay(), ofGetElapsedTimef(), start );
+            int type_max = 7;
+            int type = round(n1 * type_max);
+            
+            float n2 = ofNoise( ofGetHours() , ofGetFrameNum()*2.0, start );
+            n2 = pow(n2, 8) * ofRandom(1.0f,10.0f);
+            
+            int num_min = s.bufferSize * 0.01;
+            int num_max = s.bufferSize * 0.05;
+            int num = num_min + n2*num_max;
+            
+            if(type == 3) num*=0.25;
+            
+            if((start+num)>=end){
+                num =  end-start-1;
+                loop = false;
+            }
+            switch (type) {
+                case 0: ob::draw_line_wave(s, start, num, amp); break;
+                case 1: ob::draw_dot_wave(s, start, num, amp); break;
+                case 2: ob::draw_prep_line(s, start, num, amp); break;
+                case 3: ob::draw_circle(s, start, num, amp); break;
+                case 4: ob::draw_rect(s, start, num, amp); break;
+                case 5: ob::draw_log_wave(s, start, num, amp*0.01); break;
+                case 6: ob::draw_arc(s, start, num, amp*0.5); break;
+                case 7: ob::draw_prep_line_inv(s, start, num, amp/3); break;
+                    
+                default: break;
+            }
+            
+            start += num;
+        }
+    }
 }
 
 void ofApp::draw_bg(){
