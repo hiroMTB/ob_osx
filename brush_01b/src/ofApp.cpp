@@ -1,6 +1,17 @@
 #include "ofApp.h"
 #include "obGeoDrawer.hpp"
 
+
+//
+//  if n<0 -1
+//  if n=0  0
+//  if n>0  1
+//
+template<typename T>
+inline int signval(T n){
+    return (n > 0) - (n < 0);
+}
+
 void ofApp::setup(){
     
     ofSetFrameRate(targetFps);
@@ -12,6 +23,7 @@ void ofApp::setup(){
     ofDisableSmoothing();
 
     bStart = true;
+    bLog = true;
 
     // sound
     int bufferSize = 1920;
@@ -55,26 +67,38 @@ void ofApp::setup(){
 
 void ofApp::audioIn(float * input, int bufferSize, int nChannels){
     
-    if( !bStart ) return;
-    
-    audioData.clear();
-    for(int i=0; i<bufferSize; i++){
-        float val = input[i];
-        audioData.push_back( val * 1.8);
-        currentSamplePos++;
+    if( bStart ){
+        audioData.insert(audioData.begin(), input, input+bufferSize*nChannels);
+        currentSamplePos += soundStream.getBufferSize();
+    }
+}
+
+void ofApp::audioPreProcess(){
+
+    // LOG scale
+    if(bLog){
+        float strength = 3;
+        float base = log10(1+strength);
+        
+        for_each(audioData.begin(), audioData.end(), [&](float &val){
+            float sign = signval<float>(val);
+            float log = log10(1+abs(val)*strength) / base;
+            val = log * sign;
+        });
     }
 }
 
 void ofApp::update(){
 
     if( !bStart ) return;
+    
+    audioPreProcess();
 
     float sampleRate = soundStream.getSampleRate();
     int totalSampleNum = total_time_ms/1000 * sampleRate;
     indicator.x = (float)currentSamplePos/totalSampleNum * track_len;
     
-    
-    // make vbo from video
+// make vbo from video
 //    grabber.update();
 //    if(grabber.isFrameNew()){
 //        ofPixels & pix = grabber.getPixels();
@@ -136,7 +160,7 @@ void ofApp::draw(){
 }
 
 void ofApp::draw_wave(){
-    // make vbo from audio
+
     if(audioData.size()!=0){
         
         ob::settings s;
@@ -170,14 +194,16 @@ void ofApp::draw_wave(){
             if((start+num)>=end){
                 num =  end-start-1;
                 loop = false;
+                if(num<=2) break;
             }
+            
             switch (type) {
                 case 0: ob::draw_line_wave(s, start, num, amp); break;
                 case 1: ob::draw_dot_wave(s, start, num, amp); break;
                 case 2: ob::draw_prep_line(s, start, num, amp); break;
                 case 3: ob::draw_circle(s, start, num, amp); break;
                 case 4: ob::draw_rect(s, start, num, amp); break;
-                case 5: ob::draw_log_wave(s, start, num, amp*0.01); break;
+                case 5: ob::draw_log_wave(s, start, num, amp); break;
                 case 6: ob::draw_arc(s, start, num, amp*0.5); break;
                 case 7: ob::draw_prep_line_inv(s, start, num, amp/3); break;
                     
@@ -213,7 +239,10 @@ void ofApp::draw_bg(){
 }
 
 void ofApp::keyPressed(int key){
-    bStart = !bStart;
+    switch (key) {
+        case ' ': bStart = !bStart;     break;
+        case 'l': bLog   = !bLog;       break;
+    };
 }
 
 void ofApp::keyReleased(int key){

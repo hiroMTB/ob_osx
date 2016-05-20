@@ -26,6 +26,7 @@ public:
     void exit(ofEventArgs & args) override;
     void audioIn(float * input, int bufferSize, int nChannels) override;
     
+    void audioPreProcess();
     void draw_wave();
     void draw_bg();
     void draw_info();
@@ -35,6 +36,7 @@ public:
     
     bool bHandy;
     bool bStart;
+    bool bLog;
     
     // visual
     ofRectangle canvas;
