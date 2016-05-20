@@ -3,15 +3,18 @@
 
 namespace ob {
     
-    struct settings{
+    struct DrawerSettings{
     public:
         ofApp * app;
         ofVec2f indicator;
         vector<float> * data;
         float track_len;
-        int bufferSize;
+        int buffer_size;
         float xrate;
+        float global_amp;
     };
+    
+    static DrawerSettings dset;
     
     // util
     void drawDots( const vector<ofVec3f> &v ) {
@@ -32,14 +35,15 @@ namespace ob {
         glDrawArrays(GL_LINE_STRIP, 0, v.size());
     }
     
-    void draw_line_wave( settings & s, int start, int n, float amp ){
+    void draw_line_wave( int start, int n, float local_amp=1 ){
         
         vector<ofVec3f> v;
+        float amp = dset.global_amp * local_amp;
         
         for( int i=0; i<n; i++){
             int id = start + i;
-            float d1 = (*s.data)[id];
-            float x1 = id * s.xrate;
+            float d1 = (*dset.data)[id];
+            float x1 = id * dset.xrate;
             float y1 = d1 * amp;
             v.push_back( ofVec3f(x1,y1,0) );
         }
@@ -49,36 +53,38 @@ namespace ob {
         drawLineStrip(v);
     }
     
-    void draw_dot_wave( settings & s, int start, int n, float amp ){
+    void draw_dot_wave( int start, int n, float local_amp=1 ){
         
-        vector<ofVec3f> dots(n);
+        vector<ofVec3f> v(n);
+        float amp = dset.global_amp * local_amp;
         
         for( int i=0; i<n; i++){
             int id = start + i;
-            float d = (*s.data)[id];
-            float x = id * s.xrate;
+            float d = (*dset.data)[id];
+            float x = id * dset.xrate;
             float y = d * amp;
             
-            bool inv = s.indicator.x > x;
+            bool inv = dset.indicator.x > x;
             
-            dots[i] = ofVec3f(x,y,0);
+            v[i] = ofVec3f(x,y,0);
         }
         ofFloatColor c(0,0,0,1);
         ofSetColor( c );
-        drawDots( dots );
+        drawDots( v );
     }
     
-    void draw_prep_line( settings & s, int start, int n, float amp ){
+    void draw_prep_line( int start, int n, float local_amp=1 ){
         
         vector<ofVec3f> v;
+        float amp = dset.global_amp * local_amp;
         
         for( int i=0; i<n; ){
             int id = start + i;
-            float d = (*s.data)[id];
-            float x = id * s.xrate;
+            float d = (*dset.data)[id];
+            float x = id * dset.xrate;
             float y = d * amp;
             
-            bool inv = s.indicator.x > x;
+            bool inv = dset.indicator.x > x;
             
             v.push_back( ofVec3f(x, y, 0) );
             v.push_back( ofVec3f(x, 0, 0) );
@@ -90,18 +96,19 @@ namespace ob {
         drawLines( v );
     }
     
-    void draw_prep_line_inv( settings & s, int start, int n, float amp ){
+    void draw_prep_line_inv( int start, int n, float local_amp=1 ){
         
         vector<ofVec3f> v;
-        
+        float amp = dset.global_amp * local_amp;
+
         for( int i=0; i<n; ){
             int id = start + i;
-            float d = (*s.data)[id];
+            float d = (*dset.data)[id];
             float sign = d<0 ? -1:1;
-            float x = id * s.xrate;
-            float y = sign * (1.0f-abs(d)) * amp;
+            float x = id * dset.xrate;
+            float y = d * amp;
             v.push_back( ofVec3f(x, y, 0) );
-            v.push_back( ofVec3f(x, 0, 0) );
+            v.push_back( ofVec3f(x, amp*sign*0.25, 0) );
             i += ofRandom(3, 10);
         }
         
@@ -109,15 +116,18 @@ namespace ob {
         ofSetColor( c );
         drawLines(v);
     }
-    void draw_circle( settings & s, int start, int n, float amp ){
+ 
+    void draw_circle( int start, int n, float local_amp=1 ){
         
-        vector<ofVec3f> dots;
+        vector<ofVec3f> v;
+        float amp = dset.global_amp * local_amp;
+
         int res = 360*0.4;
         float angleAdder = 360.0f/res;
         
         int id = start + n*0.5;
-        float d = (*s.data)[id];
-        float center_x = id * s.xrate;
+        float d = (*dset.data)[id];
+        float center_x = id * dset.xrate;
         float center_y = (d+ofRandom(-0.05f, 0.05f))*amp;
         float diam = amp * ofRandom(0.005, 0.04+d);
         for(int i=0; i<res; ){
@@ -125,47 +135,54 @@ namespace ob {
             float x = diam*cos( ofDegToRad(angle)) + center_x;
             float y = diam*sin( ofDegToRad(angle) ) + center_y;
                         
-            dots.push_back(ofVec3f(x, y, 0));
+            v.push_back(ofVec3f(x, y, 0));
             
             i += ofRandom(1, 6);
         }
         ofFloatColor c(0,0,0,1);
         ofSetColor( c );
-        drawDots(dots);
+        drawDots(v);
+        
+        if( ofRandomf() >0.1 ){
+            ofDrawLine(center_x, center_y, center_x, 0);
+        }
     }
     
-    void draw_rect( settings & s, int start, int n, float amp ){
+    void draw_rect( int start, int n, float local_amp=1 ){
         
+        float amp = dset.global_amp * local_amp;
+    
         //start
-        float d1 = (*s.data)[start];
-        float x1 = start * s.xrate;
+        float d1 = (*dset.data)[start];
+        float x1 = start * dset.xrate;
         float y1 = d1 * amp;
         
         // end
-        float d2 = (*s.data)[start+n-1];
-        float x2 = (start+n-1) * s.xrate;
+        float d2 = (*dset.data)[start+n-1];
+        float x2 = (start+n-1) * dset.xrate;
         float y2 = d2 * amp;
         
         ofNoFill(); ofSetColor(ofFloatColor(1,0,0,1));
         ofDrawRectangle(x1, y1, x2-x1, y2-y1);
     }
     
-    void draw_log_wave( settings & s, int start, int n, float amp ){
+    void draw_log_wave( int start, int n, float local_amp=1 ){
         
         vector<ofVec3f> v;
-        
+        float amp = dset.global_amp * local_amp;
+
         float strength = ofRandom(2, 10);
-        float sx = start * s.xrate;
+        float sx = start * dset.xrate;
         v.push_back( ofVec3f(sx,0,0));
         
-        float ep = (*s.data)[start+n];
+        float ep = (*dset.data)[start+n];
         ofVec3f point;
         for( int i=0; i<n; i++){
             int id = start + i;
-            float d = (*s.data)[id];
+            float d = (*dset.data)[id];
             float sign = d<0 ? -1:1;
             float log = log10(1+abs(d)*strength) / log10(1+strength);
-            float x = id * s.xrate;
+            float x = id * dset.xrate;
             float y = log * amp * sign;
             point.set(x,y,0);
             v.push_back(point);
@@ -177,34 +194,33 @@ namespace ob {
         drawLineStrip(v);
     }
     
-    void draw_arc( settings & s, int start, int n, float amp ){
+    void draw_arc( int start, int n, float local_amp=1 ){
         
-        vector<ofVec3f> dots;
-        
-        float totalAngle = ofRandom(2, 8) * 15;
-        float startAngle = ofRandom(-360, 360);
-        float angleAdder = ofRandom(0.2f,1.5f);
+        vector<ofVec3f> v;
+        float amp = dset.global_amp * local_amp;
+
+        float totalAngle = ofRandom(1, 4) * 45;
+        float startAngle = ofRandom(-4, 4) * 45;
+        float angleAdder = ofRandom(0.1f,1.5f);
         int nPoints = totalAngle/angleAdder;
         
         int id = start;
-        float d = (*s.data)[id];
-        float center_x = id * s.xrate;
-        float center_y = (d+ofRandom(0.1f, 0.2f))*amp;
-        float diam = amp + ofRandom(0, amp);
+        float d = (*dset.data)[id];
+        float center_x = id * dset.xrate;
+        float center_y = (d+ofRandom(0.1f, 0.3f))*amp;
+        float diam = amp*0.5 + ofRandom(0, amp);
         
         for(int i=0; i<nPoints; ){
             float angle = i * angleAdder + startAngle;
             float x = diam*cos( ofDegToRad(angle)) + center_x;
             float y = diam*sin( ofDegToRad(angle) ) + center_y;
-            dots.push_back( ofPoint(x, y, 0) );
+            v.push_back( ofVec3f(x, y, 0) );
             
-            bool inv = s.indicator.x > x;
-            
-            i += ofRandom(1, 8);
+            i += ofRandom(1, 6);
         }
         
         ofFloatColor c(0,0,0,1);
         ofSetColor(c);
-        drawDots( dots );
+        drawDots( v );
     }
 }

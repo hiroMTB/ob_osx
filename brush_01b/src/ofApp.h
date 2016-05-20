@@ -30,6 +30,7 @@ public:
     void draw_wave();
     void draw_bg();
     void draw_info();
+    void draw_audioStats();
     
     const int total_time_ms = 3 * 60 * 1000; // 3 mim
     const int targetFps = 60;
