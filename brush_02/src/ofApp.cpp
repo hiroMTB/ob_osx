@@ -14,7 +14,7 @@ inline int signval(T n){
 
 void ofApp::setup(){
     
-    ofSetFrameRate(target_fps);
+    ofSetFrameRate(targetFps);
     ofSetVerticalSync(true);
     ofSetWindowShape(1920, 1080);
     ofSetWindowPosition(0, 0);
@@ -32,8 +32,8 @@ void ofApp::setup(){
     currentSamplePos = 0;
     prevSamplePos = 0;
 
-    sound_stream.setup(this, 0, nCh, sampleRate, bufferSize, 4);
-    audioIn_proc.assign( sound_stream.getBufferSize(), 0.0f );
+    soundStream.setup(this, 0, nCh, sampleRate, bufferSize, 4);
+    audioData.assign( soundStream.getBufferSize(), 0.0f );
 
     // visual
     int w = ofGetWindowWidth();
@@ -50,11 +50,10 @@ void ofApp::setup(){
     start_point.y = shortside/2;
     indicator.set(0, 0);
 
-    // video
-    grabber.setup(420, 320);
-    grabber.setUseTexture(true);
-    grabber.setPixelFormat( OF_PIXELS_RGB );
-    grabber.setDesiredFrameRate( target_fps );
+    // set update speed
+    float speed_ms = track_len / (float)total_time_ms;
+    indicator_speed = speed_ms * 1000.0f/(float)targetFps;
+    
     
 #ifdef RENDER
     exp.setup(1920, 1080, 30);
@@ -67,33 +66,22 @@ void ofApp::setup(){
 }
 
 void ofApp::audioIn(float * input, int bufferSize, int nChannels){
-    if( bStart ){        
-        audioIn_raw = input;
-        currentSamplePos += sound_stream.getBufferSize();
-    }else{
-        audioIn_raw = NULL;
+    
+    if( bStart ){
+        audioData.clear();
+        audioData.insert(audioData.begin(), input, input+bufferSize*nChannels);
+        currentSamplePos += soundStream.getBufferSize();
     }
 }
 
 void ofApp::audioPreProcess(){
-
-    if( audioIn_raw==NULL ) return;
-    
-    
-    // copy data from buffer
-    {
-        audioIn_proc.clear();
-        int bufferSize = sound_stream.getBufferSize();
-        int nCh = sound_stream.getNumInputChannels();
-        audioIn_proc.insert(audioIn_proc.begin(), audioIn_raw, audioIn_raw+bufferSize*nCh);
-    }
     
     // LOG scale
     if(bLog){
         float strength = 3;
         float base = log10(1+strength);
         
-        for_each(audioIn_proc.begin(), audioIn_proc.end(), [&](float &val){
+        for_each(audioData.begin(), audioData.end(), [&](float &val){
             float sign = signval<float>(val);
             float log = log10(1+abs(val)*strength) / base;
             val = log * sign;
@@ -104,44 +92,23 @@ void ofApp::audioPreProcess(){
     if(1){
         float rate = 0.5;
         float prev = 0;
-        for(int i=2; i<audioIn_proc.size()-2; i++){
-            float v1 = audioIn_proc[i-2] * 0.1;
-            float v2 = audioIn_proc[i-1] * 0.3;
-            float v3 = audioIn_proc[i-0] * 0.5;
-            float v4 = audioIn_proc[i+1] * 0.3;
-            float v5 = audioIn_proc[i+2] * 0.1;
-            audioIn_proc[i] = (v1+v2+v3+v4+v5)/1.3f;
+        for(int i=2; i<audioData.size()-2; i++){
+            float v1 = audioData[i-2] * 0.1;
+            float v2 = audioData[i-1] * 0.3;
+            float v3 = audioData[i-0] * 0.5;
+            float v4 = audioData[i+1] * 0.3;
+            float v5 = audioData[i+2] * 0.1;
+            audioData[i] = (v1+v2+v3+v4+v5)/1.3f;
         }
     }
     
     // stats
-    if( ofGetFrameNum() % (target_fps/20) == 0){
+    if( ofGetFrameNum() % (targetFps/20) == 0){
         //ob::clear();
-        ob::calc(audioIn_proc);
+        ob::calc(audioData);
     }else{
         ob::dim();        
     }
-}
-
-void ofApp::videoPreProcess(){
-
-    // make vbo from video
-    grabber.update();
-    
-//    if(grabber.isFrameNew()){
-//    
-//        ofPixels & pix = grabber.getPixels();
-//        
-//        int w = pix.getWidth();
-//        int h = pix.getHeight();
-//        for(int y=0; y<h; y++){
-//            for(int x=0; x<w; x++){
-//                int index = x + y*w;
-//                ofColor c = pix.getColor(index);
-//            }
-//        }
-//        
-//    }
 }
 
 void ofApp::update(){
@@ -149,11 +116,25 @@ void ofApp::update(){
     if( !bStart ) return;
     
     audioPreProcess();
-    videoPreProcess();
 
-    float sampleRate = sound_stream.getSampleRate();
+    float sampleRate = soundStream.getSampleRate();
     int totalSampleNum = total_time_ms/1000 * sampleRate;
     indicator.x = (float)currentSamplePos/totalSampleNum * track_len;
+    
+// make vbo from video
+//    grabber.update();
+//    if(grabber.isFrameNew()){
+//        ofPixels & pix = grabber.getPixels();
+//        int w = pix.getWidth();
+//        int h = pix.getHeight();
+//        for(int y=0; y<h; y++){
+//            for(int x=0; x<w; x++){
+//                int index = x + y*w;
+//                ofFloatColor c = pix.getColor(index);
+//                
+//            }
+//        }
+//    }
     
     if (indicator.x >= track_len) {
         cout << "tracking finished : " << ofGetElapsedTimef() << endl;
@@ -179,13 +160,13 @@ void ofApp::draw(){
         }
 
         ofTranslate(start_point);
+
         draw_bg();
         draw_wave();
         draw_audioStats();
         
     }ofPopMatrix();
-
-    draw_vid();
+    
     draw_info();
 
 #ifdef RENDER
@@ -220,14 +201,14 @@ void ofApp::draw_bg(){
 
 void ofApp::draw_wave(){
 
-    if(audioIn_proc.size()!=0){
+    if(audioData.size()!=0){
         
         ob::DrawerSettings & s = ob::dset;
         s.app = this;
         s.indicator = indicator;
-        s.data = &audioIn_proc;
+        s.data = &audioData;
         s.track_len = track_len;
-        s.buffer_size = sound_stream.getBufferSize();
+        s.buffer_size = soundStream.getBufferSize();
         s.xrate = track_len/s.buffer_size;
         s.global_amp = canvas.height/2 * 0.8;
         
@@ -277,7 +258,7 @@ void ofApp::draw_wave(){
 void ofApp::draw_audioStats(){
     
     if(bStart && ob::audioStats.min!=numeric_limits<float>::max()){
-        const int bufferSize = sound_stream.getBufferSize();
+        const int bufferSize = soundStream.getBufferSize();
         const float xrate = track_len/bufferSize;
         const float amp = ob::dset.global_amp;
 
@@ -302,47 +283,15 @@ void ofApp::draw_audioStats(){
     }
 }
 
-
-void ofApp::draw_vid(){
-
-    ofSetRectMode(OF_RECTMODE_CENTER);
-    
-    //if(grabber.isFrameNew()){
-        
-        ofPixels & pix = grabber.getPixels();
-        
-        int w = pix.getWidth();
-        int h = pix.getHeight();
-        float xrate = (float)ofGetWindowWidth() / w;
-        float yrate = (float)ofGetWindowHeight() / h;
-        
-        for(int y=0; y<h; y++){
-            for(int x=0; x<w; x++){
-                ofColor c = pix.getColor(x, y);
-                
-                int br = c.getBrightness();
-                if( br>120 ){
-                    float size = 3 * br/255.0;
-                    ofSetColor( 0, 255, 10);
-                    ofFill();
-                    float xpos = x*xrate;
-                    float ypos = y*yrate;
-                    ofDrawRectangle(xpos, ypos, size, size);
-                }
-            }
-        }
-    //}
-}
-
 void ofApp::draw_info(){
     int y = 10;
     int x = 10;
     int os = 200;
     ofSetColor(0);
     ofDrawBitmapString("fps        " + ofToString(ofGetFrameRate()), x, y);
-    ofDrawBitmapString("nChannels  " + ofToString(sound_stream.getNumInputChannels() ), x+=os, y);
-    ofDrawBitmapString("bufferSize " + ofToString(sound_stream.getBufferSize()), x+=os, y);
-    ofDrawBitmapString("sampleRate " + ofToString(sound_stream.getSampleRate()), x+=os, y);
+    ofDrawBitmapString("nChannels  " + ofToString(soundStream.getNumInputChannels() ), x+=os, y);
+    ofDrawBitmapString("bufferSize " + ofToString(soundStream.getBufferSize()), x+=os, y);
+    ofDrawBitmapString("sampleRate " + ofToString(soundStream.getSampleRate()), x+=os, y);
 }
 
 void ofApp::keyPressed(int key){
@@ -361,5 +310,5 @@ void ofApp::mouseEntered(int x, int y){}
 void ofApp::mouseExited(int x, int y){}
 void ofApp::windowResized(int w, int h){}
 void ofApp::gotMessage(ofMessage msg){}
-void ofApp::dragEvent(ofDragInfo dragInfo){ }
+void ofApp::dragEvent(ofDragInfo dragInfo){}
 void ofApp::exit(ofEventArgs & args){}
