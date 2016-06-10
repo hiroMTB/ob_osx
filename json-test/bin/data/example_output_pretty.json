@@ -1,0 +1,27 @@
+[
+   {
+      "brushingDuration" : 120,
+      "createDate" : "2015-02-20T12:40:45.327-07:00",
+      "handleId" : "123",
+      "handleSessionId" : 1234567890,
+      "id" : "12",
+      "preferredBrushMode" : 0,
+      "pressureCount" : 12,
+      "pressureTime" : 120,
+      "timeEnd" : " 2015-02-20T12:40:45.327-07:00",
+      "timeStart" : "2015-02-20T12:40:45.327-07:00"
+   },
+   {
+      "brushingDuration" : 120,
+      "createDate" : "2015-02-20T12:40:45.327-07:00",
+      "handleId" : "123",
+      "handleSessionId" : 1234567890,
+      "id" : "12",
+      "preferredBrushMode" : 0,
+      "pressureCount" : 12,
+      "pressureTime" : 120,
+      "timeEnd" : " 2015-02-20T12:40:45.327-07:00",
+      "timeStart" : "2015-02-20T12:40:45.327-07:00"
+   }
+]
+
