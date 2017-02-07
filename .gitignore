@@ -21,6 +21,7 @@ DerivedData
 *.hmap
 *.ipa
 *.xcuserstate
+contents.xcworkspacedata
 
 #OSX
 .DS_Store
