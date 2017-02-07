@@ -24,7 +24,8 @@ public:
     void dragEvent(ofDragInfo dragInfo) override;
     void gotMessage(ofMessage msg) override;
     void exit(ofEventArgs & args) override;
-    void audioIn(float * input, int bufferSize, int nChannels) override;
+    void audioIn( ofSoundBuffer& buffer ) override;
+    //void audioIn(float * input, int bufferSize, int nChannels) override;
     
     void draw_bg();
     void draw_info();
@@ -54,6 +55,7 @@ public:
     int prevSamplePos;
     vector<float> audioData;
     ofSoundStream soundStream;
+    float amp;
     
     // video
     //ofVideoGrabber grabber;

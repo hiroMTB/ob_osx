@@ -20,7 +20,10 @@ void ofApp::setup(){
     currentSamplePos = 0;
     prevSamplePos = 0;
 
-    soundStream.setup(this, 0, nCh, sampleRate, bufferSize, 4);
+    bool soundOk = soundStream.setup(this, 0, nCh, sampleRate, bufferSize, 4);
+    if( soundOk ) cout << "sound setup ok" << endl;
+    else cout << "ERROR : cant setup sound stream" << endl;
+    
     audioData.assign( soundStream.getBufferSize(), 0.0f );
 
     // visual
@@ -65,15 +68,19 @@ void ofApp::setup(){
 #endif
 }
 
-void ofApp::audioIn(float * input, int bufferSize, int nChannels){
+//void ofApp::audioIn(float * input, int bufferSize, int nChannels){
+void ofApp::audioIn(ofSoundBuffer& buffer){
     
     if( !bStart ) return;
     
+    int bufferSize = buffer.getNumFrames();
+    
     audioData.clear();
     for(int i=0; i<bufferSize; i++){
-        float val = input[i];
+        float val = buffer.getSample(i, 0);
         audioData.push_back( val * 1.8);
         currentSamplePos++;
+        amp = buffer.getRMSAmplitude();
     }
 }
 
@@ -200,6 +207,7 @@ void ofApp::draw(){
     ofDrawBitmapString("fps  " + ofToString(ofGetFrameRate()), 10, y);
     ofDrawBitmapString("vPoints numVertices " + ofToString(vPoints.getNumVertices()), 10, y+=os);
     ofDrawBitmapString("vLines  numVertices " + ofToString(vLines.getNumVertices()), 10, y+=os);
+    ofDrawBitmapString("Sound Amp " + ofToString(amp, 2), 10, y+=os);
 
 #ifdef RENDER
     exp.end();
