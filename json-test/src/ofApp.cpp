@@ -1,6 +1,11 @@
 #include "ofApp.h"
 
 void ofApp::setup(){
+    // ofRegisterURLNotification(this);
+}
+
+void ofApp::loadFile(){
+    
     std::string file = "test.json";
     
     // Now parse the JSON
@@ -28,24 +33,120 @@ void ofApp::setup(){
     }
 }
 
+void ofApp::requestBear(){
+
+    string baseurl = "https://api.developer.oralb.com/v1";
+    string id = "fac078cd-1cf0-4e04-82ab-385a98359d09";
+    string key = "6bb594ec-2860-427e-8e34-891fdb33995d";
+
+    
+    // 1.request
+    {
+        ofURLFileLoader loader;
+        ofHttpRequest req;
+        ofHttpResponse response;
+        ofxJSONElement json;
+        
+        string url = baseurl + "/bearertoken/" + id + "?key=" + key;
+        req.url = url;
+        req.name = "Request Bearertoken";
+        response = loader.handleRequest(req);
+        if(response.status != 200) {
+            cout << "ERROR " << response.status << " : " << response.error << endl;
+            return;
+        }
+        
+        ofBuffer buf = response.data;
+        string raw = ofToString(buf);
+        bool ok = json.parse(raw);
+        if(ok) bear = json["bearerToken"].asString();
+        
+        result = json;
+    }
+    
+    
+    // 2.request
+    {
+        ofURLFileLoader loader;
+        ofHttpResponse response;
+        ofHttpRequest req;
+        ofxJSONElement json;
+        string url = baseurl + "/authorize";
+        req.url = url;
+        req.headers["Authorization"] = "Bearer " + bear;
+        req.name = "Request Authorize";
+        response = loader.handleRequest(req);
+        if(response.status != 200) {
+            cout << "ERROR " << response.status << " : " << response.error << endl;
+            return;
+        }
+        
+        ofBuffer buf = response.data;
+        string raw = ofToString(buf);
+        bool ok = json.parse(raw);
+        
+        if(ok){
+            string authUrl = json["url"].asString();
+            ofLoadURL( authUrl );
+            cout << authUrl << endl;
+        }
+        
+        result = json;
+    }
+    
+}
+
 void ofApp::draw(){
     ofBackground(0);
-    ofSetHexColor(0x00FF00);    
-    draw_test();
+    ofPushMatrix();{
+        ofTranslate(20, 20);
+        ofSetHexColor(0x00FF00);
+         draw_json(result);
+    }ofPopMatrix();
+    
+    
+    ofPushMatrix();{
+        ofTranslate(0, ofGetHeight()/2);
+        ofSetColor(125);
+        ofFill();
+        ofDrawRectangle(0, 0, 0, ofGetWidth(), ofGetHeight()/2);
+        ofSetColor(0);
+
+        ofDrawBitmapString("RAW json", 20, 20);
+        ofDrawBitmapString(result.getRawString(), 20, 40);
+    }ofPopMatrix();
+}
+
+void ofApp::keyPressed(int key){
+
+    switch(key){
+        case 'w':
+            requestBear();
+            break;
+
+        
+        case 'f':
+            loadFile();
+            break;
+    }
 }
 
 /*
  *      parse everything with iterator
  *      alphabetical order because of map container
  */
-void ofApp::draw_test(){
+void ofApp::draw_json( ofxJSONElement & elem){
 
     std::stringstream ss;
 
-    Json::Value::iterator itrA = result.begin();
+    Json::Value::iterator itrA = elem.begin();
         
-    for( ; itrA!=result.end(); itrA++){
+    for( ; itrA!=elem.end(); itrA++){
 
+        string name = itrA.memberName();
+        string data = (*itrA).asString();
+        ss << name << " : " << data << "\n";
+        
         Json::Value::iterator itrB = (*itrA).begin();
         
         for( ; itrB!=(*itrA).end(); itrB++){
@@ -57,9 +158,14 @@ void ofApp::draw_test(){
         ss << "\n\n";
     }
     
-    ofDrawBitmapString(ss.str(), 20, 20);
-    
+    ofDrawBitmapString(ss.str(), 0, 0);
 }
+
+
+
+
+
+
 
 void ofApp::draw_example(){
     std::stringstream ss;

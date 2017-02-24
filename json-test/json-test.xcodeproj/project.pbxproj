@@ -44,6 +44,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		45AE5BB71E60962E0015DDAA /* bear.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = bear.json; path = bin/data/bear.json; sourceTree = SOURCE_ROOT; };
 		4DB46D611CFDFA3E0018C1B5 /* ofxJSON.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ofxJSON.h; sourceTree = "<group>"; };
 		4DB46D621CFDFA3E0018C1B5 /* ofxJSONElement.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ofxJSONElement.cpp; sourceTree = "<group>"; };
 		4DB46D631CFDFA3E0018C1B5 /* ofxJSONElement.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ofxJSONElement.h; sourceTree = "<group>"; };
@@ -181,6 +182,7 @@
 				E4B69E1F0A3A1BDC003C02F2 /* ofApp.h */,
 				4DB46D6E1CFDFAD30018C1B5 /* test.json */,
 				4DB46D6F1CFDFC570018C1B5 /* example.json */,
+				45AE5BB71E60962E0015DDAA /* bear.json */,
 			);
 			path = src;
 			sourceTree = SOURCE_ROOT;
